@@ -1,6 +1,5 @@
-declare module "*.worker.ts" {
-  class WebpackWorker extends Worker {
-    constructor();
+declare module "*?worker&inline" {
+  export default class InlineWorker extends Worker {
+    constructor(options?: WorkerOptions);
   }
-  export default WebpackWorker;
 }

@@ -5,10 +5,13 @@
 # npm
 node_modules
 package-lock.json
-pnpm-lock.yaml
 
 # build
+/dist/
+/dist-vite/
 main.js
+# Legacy Webpack chunks generated in the repository root.
+/[0-9]*.main.js
 *.js.map
 
 # obsidian

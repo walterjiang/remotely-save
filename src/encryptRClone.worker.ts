@@ -34,6 +34,7 @@ ctx.addEventListener("message", async (event: any) => {
     nameTweakBuf,
     inputName,
     inputContent,
+    password,
   } = event.data as {
     action:
       | "prepare"
@@ -46,6 +47,7 @@ ctx.addEventListener("message", async (event: any) => {
     nameTweakBuf?: ArrayBuffer;
     inputName?: string;
     inputContent?: ArrayBuffer;
+    password?: string;
   };
 
   // console.debug(`worker [${workerNanoID}]: receiving action=${action}`);
@@ -53,24 +55,31 @@ ctx.addEventListener("message", async (event: any) => {
   if (action === "prepare") {
     // console.debug(`worker [${workerNanoID}]: prepare: start`);
     try {
-      if (
-        dataKeyBuf === undefined ||
-        nameKeyBuf === undefined ||
-        nameTweakBuf === undefined
-      ) {
-        // console.debug(`worker [${workerNanoID}]: prepare: no buffer??`);
-        throw Error(
-          `worker [${workerNanoID}]: prepare: internal keys not transferred to worker properly`
+      if (password !== undefined) {
+        await cipher.key(password, "");
+      } else {
+        if (
+          dataKeyBuf === undefined ||
+          nameKeyBuf === undefined ||
+          nameTweakBuf === undefined
+        ) {
+          throw Error("Encryption worker received incomplete keys");
+        }
+        cipher.updateInternalKey(
+          new Uint8Array(dataKeyBuf),
+          new Uint8Array(nameKeyBuf),
+          new Uint8Array(nameTweakBuf)
         );
       }
-      // console.debug(`worker [${workerNanoID}]: prepare: so we update`);
-      cipher.updateInternalKey(
-        new Uint8Array(dataKeyBuf),
-        new Uint8Array(nameKeyBuf),
-        new Uint8Array(nameTweakBuf)
-      );
       port.postMessage({
         status: "ok",
+        ...(password !== undefined
+          ? {
+              dataKeyBuf: cipher.dataKey.buffer,
+              nameKeyBuf: cipher.nameKey.buffer,
+              nameTweakBuf: cipher.nameTweak.buffer,
+            }
+          : {}),
       });
     } catch (error) {
       console.error(error);

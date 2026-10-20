@@ -34,7 +34,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [20.x]
+        node-version: [24.x]
         # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
 
     steps:
@@ -53,17 +53,26 @@ jobs:
             ${{ runner.os }}-lfs-
       - name: Git LFS Pull
         run: git lfs pull
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12.4.2
+          run_install: false
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-      - run: npm install
-      - run: npm test
-      - run: npm run build
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - run: pnpm exec playwright-core install --with-deps chromium
+      - run: pnpm test:build
+        env:
+          PLAYWRIGHT_CHANNEL: chromium
       - uses: actions/upload-artifact@v4
         with:
           name: my-dist
           path: |
-            main.js
-            manifest.json
-            styles.css
+            dist/main.js
+            dist/manifest.json
+            dist/styles.css

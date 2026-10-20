@@ -34,7 +34,7 @@
   "protocol_dropbox_no_modal": "您不是在设置页的弹窗里触发 Dropbox 的。中止操作。",
   "protocol_onedrive_connecting": "正在连接 OneDrive……\n请不要关闭此弹窗。",
   "protocol_onedrive_connect_succ_revoke": "您已作为用户 {{username}} 连接上了。如果您想取消连接，请点击此按钮。",
-  "protocol_onedrive_connect_fail": "OneDrive 的回调请求有点异常。您是否拒绝了鉴权？",
+  "protocol_onedrive_connect_fail": "未能完成 OneDrive 连接。请查看具体错误，处理后重新鉴权。",
   "protocol_onedrive_connect_unknown": "不知道如何处理此 callback：{{params}}",
   "command_startsync": "开始同步（start sync）",
   "command_drynrun": "开始同步（空跑模式）（start sync (dry run only)）",

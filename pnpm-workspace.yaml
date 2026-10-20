@@ -1,0 +1,19 @@
+allowBuilds:
+  '@biomejs/biome': true
+  aws-crt: false
+  core-js-pure: false
+  esbuild: true
+  yarn: false
+
+# clean-stack 5.3 imports node:url, which the browser bundle cannot resolve.
+# Keep this aligned with npm's overrides in package.json.
+overrides:
+  'aggregate-error@^5>clean-stack': 5.2.0
+  'box-typescript-sdk-gen>uuid': 11.1.1
+  'get-uri>basic-ftp': 6.2.1
+  # pCloud ships compiled lib/ files; these are SDK publishing tools only.
+  'pcloud-sdk-js>@babel/cli': '-'
+  'pcloud-sdk-js>@babel/core': '-'
+  'pcloud-sdk-js>@babel/preset-env': '-'
+  'pcloud-sdk-js>yarn': '-'
+

@@ -147,8 +147,8 @@ export const sendAuthReq = async (
       return rsp2 as AccessCodeResponseSuccessfulType;
     }
   } catch (e) {
-    console.error(e);
     await errorCallBack(e);
+    throw e;
   }
 };
 
@@ -194,7 +194,7 @@ export const setConfigBySuccessfullAuthInplace = async (
   console.info("start updating local info of OneDrive token");
   config.accessToken = authRes.access_token;
   config.accessTokenExpiresAtTime =
-    Date.now() + authRes.expires_in - 5 * 60 * 1000;
+    Date.now() + authRes.expires_in * 1000 - 5 * 60 * 1000;
   config.accessTokenExpiresInSeconds = authRes.expires_in;
   config.refreshToken = authRes.refresh_token!;
 
@@ -578,17 +578,24 @@ export class FakeFsOnedrive extends FakeFs {
     if (this.vaultFolderExists) {
       // console.info(`already checked, /${this.remoteBaseDir} exist before`)
     } else {
-      const k = await this._getJson("/drive/special/approot/children");
+      // Resolve the special folder before writing: use the standard item endpoint.
+      const root: DriveItem = await this._getJson("/me/drive/special/approot");
+      if (!root.id) {
+        throw Error("OneDrive app folder response has no item ID.");
+      }
+      const childrenPath = `/me/drive/items/${encodeURIComponent(root.id)}/children`;
+      const k = await this._getJson(childrenPath);
       // console.debug(k);
       this.vaultFolderExists =
-        (k.value as DriveItem[]).filter((x) => x.name === this.remoteBaseDir)
-          .length > 0;
+        (k.value as DriveItem[]).filter(
+          (x) => x.name === this.remoteBaseDir && x.folder !== undefined
+        ).length > 0;
       if (!this.vaultFolderExists) {
         console.info(`remote does not have folder /${this.remoteBaseDir}`);
-        await this._postJson("/drive/special/approot/children", {
+        await this._postJson(childrenPath, {
           name: `${this.remoteBaseDir}`,
           folder: {},
-          "@microsoft.graph.conflictBehavior": "replace",
+          "@microsoft.graph.conflictBehavior": "fail",
         });
         console.info(`remote folder /${this.remoteBaseDir} created`);
         this.vaultFolderExists = true;
@@ -637,6 +644,34 @@ export class FakeFsOnedrive extends FakeFs {
   async _postJson(pathFragOrig: string, payload: any) {
     const theUrl = this._buildUrl(pathFragOrig);
     console.debug(`postJson, theUrl=${theUrl}`);
+    if (VALID_REQURL) {
+      const response = await requestUrl({
+        url: theUrl,
+        method: "POST",
+        contentType: "application/json",
+        body: JSON.stringify(payload),
+        headers: {
+          Authorization: `Bearer ${await this.authGetter.getAccessToken()}`,
+        },
+        throw: false,
+      });
+      if (response.status >= 400) {
+        // Report Graph's error, never the request headers or complete response.
+        let code = "unknownError";
+        let message = "";
+        try {
+          const error = response.json?.error;
+          code = error?.code || code;
+          message = error?.message || message;
+        } catch {
+          // Non-JSON errors still retain their HTTP status and operation.
+        }
+        throw Error(
+          `OneDrive POST ${pathFragOrig}: HTTP ${response.status}; ${code}: ${message}`
+        );
+      }
+      return response.json;
+    }
     return JSON.parse(
       await request({
         url: theUrl,

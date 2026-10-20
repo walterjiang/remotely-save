@@ -200,6 +200,57 @@ In the latest version, you can change the settings to allow syncing `_` files or
 
 See [PRO](./docs/pro/README.md) for more details.
 
+## Local Development
+
+This branch builds with Vite. Use Node.js 22.12+ and
+pnpm 12.4.2. Install Git LFS and run `git lfs pull` to fetch the binary test
+fixtures before running the tests.
+
+```sh
+pnpm install --frozen-lockfile
+pnpm build       # Type checking and production build
+pnpm dev         # Watch build with inline source maps; no dev server
+pnpm typecheck   # Incremental TypeScript check
+pnpm test        # Mocha unit tests
+pnpm test:build  # Production build and browser smoke checks
+pnpm analyze     # In-memory build and dependency size report
+pnpm audit --prod # Check known vulnerabilities in runtime dependencies
+```
+
+The browser checks use installed Google Chrome by default. Alternatively, run
+`pnpm exec playwright-core install chromium`, then
+`PLAYWRIGHT_CHANNEL=chromium pnpm test:build`. They check the plugin export,
+PKCE and encryption workers using disposable data, without connecting accounts.
+They also compare S3 CRC64 and encrypted files with the unchanged Node libraries.
+They do not replace testing in desktop and mobile Obsidian.
+
+Worker checks also cover input buffer reuse, cancellation on close, unexpected
+worker failure, and recovery after invalid ciphertext.
+
+MSAL 7 uses a browser crypto adapter for hashing, secure randomness and UUIDs.
+Build checks restrict the application's MSAL calls to PKCE and authorization URL
+generation; adding token or certificate APIs requires reviewing that adapter.
+Browser checks cover both OneDrive authorization URLs and pCloud method wrappers.
+The pnpm overrides remove pCloud's publishing tools while retaining its compiled
+SDK and Babel runtime. The `basic-ftp` override is checked through `get-uri` using
+a local FTP fixture (download, cache and missing-file responses).
+
+The runtime needs native BigInt, WebCrypto and Web Workers (iOS/iPadOS 14+,
+or a current Android System WebView / desktop Obsidian). BigInt literals in SDKs
+are converted without losing integer precision; this is not a BigInt polyfill.
+Builds reject output syntax newer than ES2016, including in inline workers.
+
+The Box integration composes the official file/folder managers. The build rejects
+new client usage outside that scope until the adapter is extended. Browser checks
+compare its requests, responses and errors against the full official client.
+`test:build` also enforces a 3.8 MB budget for the uncompressed `main.js` file.
+
+Build output is `dist/main.js`, `dist/manifest.json` and `dist/styles.css`.
+For manual testing, copy these three files into a disposable vault's
+`.obsidian/plugins/remotely-save/` directory. `pnpm clean` removes `dist/` and
+the TypeScript cache. OAuth application settings can be supplied through a local
+`.env` using `.env.example.txt` as a template; keep credentials out of Git.
+
 ## How To Debug
 
 If you see any errors, please check the doc [here](./docs/how_to_debug/README.md) for more details.

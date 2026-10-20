@@ -85,8 +85,8 @@ import { FakeFsEncrypt } from "./fsEncrypt";
 import { getClient } from "./fsGetter";
 import { FakeFsLocal } from "./fsLocal";
 import {
-  type AccessCodeResponseSuccessfulType as AccessCodeResponseSuccessfulTypeOnedrive,
   DEFAULT_ONEDRIVE_CONFIG,
+  FakeFsOnedrive,
   sendAuthReq as sendAuthReqOnedrive,
   setConfigBySuccessfullAuthInplace as setConfigBySuccessfullAuthInplaceOnedrive,
 } from "./fsOnedrive";
@@ -513,6 +513,77 @@ export default class RemotelySavePlugin extends Plugin {
     this.syncEvent?.trigger("SYNC_DONE");
   }
 
+  async handleOnedriveCallback(inputParams: Record<string, string>) {
+    const t = (key: TransItemType, vars?: Record<string, string>) =>
+      this.i18n.t(key, vars);
+    const oauth = this.oauth2Info;
+    try {
+      if (!inputParams.code || !oauth?.verifier) {
+        // Callback parameters may contain credentials: do not include them in errors.
+        throw Error(t("protocol_onedrive_connect_fail"));
+      }
+      const content = oauth.helperModal?.contentEl;
+      content?.empty();
+      t("protocol_onedrive_connecting")
+        .split("\n")
+        .forEach((text) => content?.createEl("p", { text }));
+
+      const rsp = await sendAuthReqOnedrive(
+        this.settings.onedrive.clientID,
+        this.settings.onedrive.authority,
+        inputParams.code,
+        oauth.verifier,
+        async () => {}
+      );
+      if ("error" in rsp) {
+        throw Error(`OneDrive authorization: ${rsp.error}`);
+      }
+      await setConfigBySuccessfullAuthInplaceOnedrive(
+        this.settings.onedrive,
+        rsp,
+        () => this.saveSettings()
+      );
+      // The service selection may have changed while the browser was open.
+      const client = new FakeFsOnedrive(
+        this.settings.onedrive,
+        this.app.vault.getName(),
+        () => this.saveSettings()
+      );
+      this.settings.onedrive.username = await client.getUserDisplayName();
+      await this.saveSettings();
+
+      oauth.authDiv?.toggleClass(
+        "onedrive-auth-button-hide",
+        this.settings.onedrive.username !== ""
+      );
+      oauth.revokeAuthSetting?.setDesc(
+        t("protocol_onedrive_connect_succ_revoke", {
+          username: this.settings.onedrive.username,
+        })
+      );
+      oauth.revokeDiv?.toggleClass(
+        "onedrive-revoke-auth-button-hide",
+        this.settings.onedrive.username === ""
+      );
+      oauth.helperModal?.close();
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Unknown error";
+      const content = oauth?.helperModal?.contentEl;
+      content?.empty();
+      content?.createEl("p", { text: t("protocol_onedrive_connect_fail") });
+      content?.createEl("p", { text: message });
+      new Notice(`${t("protocol_onedrive_connect_fail")}\n${message}`, 15000);
+    } finally {
+      if (oauth) {
+        oauth.verifier = "";
+        oauth.helperModal = undefined;
+        oauth.authDiv = undefined;
+        oauth.revokeDiv = undefined;
+        oauth.revokeAuthSetting = undefined;
+      }
+    }
+  }
+
   async onload() {
     console.info(`loading plugin ${this.manifest.id}`);
 
@@ -702,86 +773,7 @@ export default class RemotelySavePlugin extends Plugin {
 
     this.registerObsidianProtocolHandler(
       COMMAND_CALLBACK_ONEDRIVE,
-      async (inputParams) => {
-        if (
-          inputParams.code !== undefined &&
-          this.oauth2Info?.verifier !== undefined
-        ) {
-          if (this.oauth2Info.helperModal !== undefined) {
-            const k = this.oauth2Info.helperModal.contentEl;
-            k.empty();
-
-            t("protocol_onedrive_connecting")
-              .split("\n")
-              .forEach((val) => {
-                k.createEl("p", {
-                  text: val,
-                });
-              });
-          }
-
-          const rsp = await sendAuthReqOnedrive(
-            this.settings.onedrive.clientID,
-            this.settings.onedrive.authority,
-            inputParams.code,
-            this.oauth2Info.verifier,
-            async (e: any) => {
-              new Notice(t("protocol_onedrive_connect_fail"));
-              new Notice(`${e}`);
-              return; // throw?
-            }
-          );
-
-          if ((rsp as any).error !== undefined) {
-            new Notice(`${JSON.stringify(rsp)}`);
-            throw Error(`${JSON.stringify(rsp)}`);
-          }
-
-          const self = this;
-          setConfigBySuccessfullAuthInplaceOnedrive(
-            this.settings.onedrive,
-            rsp as AccessCodeResponseSuccessfulTypeOnedrive,
-            () => self.saveSettings()
-          );
-
-          const client = getClient(
-            this.settings,
-            this.app.vault.getName(),
-            () => self.saveSettings()
-          );
-          this.settings.onedrive.username = await client.getUserDisplayName();
-          await this.saveSettings();
-
-          this.oauth2Info.verifier = ""; // reset it
-          this.oauth2Info.helperModal?.close(); // close it
-          this.oauth2Info.helperModal = undefined;
-
-          this.oauth2Info.authDiv?.toggleClass(
-            "onedrive-auth-button-hide",
-            this.settings.onedrive.username !== ""
-          );
-          this.oauth2Info.authDiv = undefined;
-
-          this.oauth2Info.revokeAuthSetting?.setDesc(
-            t("protocol_onedrive_connect_succ_revoke", {
-              username: this.settings.onedrive.username,
-            })
-          );
-          this.oauth2Info.revokeAuthSetting = undefined;
-          this.oauth2Info.revokeDiv?.toggleClass(
-            "onedrive-revoke-auth-button-hide",
-            this.settings.onedrive.username === ""
-          );
-          this.oauth2Info.revokeDiv = undefined;
-        } else {
-          new Notice(t("protocol_onedrive_connect_fail"));
-          throw Error(
-            t("protocol_onedrive_connect_unknown", {
-              params: JSON.stringify(inputParams),
-            })
-          );
-        }
-      }
+      (inputParams) => this.handleOnedriveCallback(inputParams)
     );
 
     this.registerObsidianProtocolHandler(

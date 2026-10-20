@@ -1,0 +1,45 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Remotely Save build checks</title>
+<pre id="result">Running local bundle and Worker checks…</pre>
+<script>
+class Stub {}
+const blockedRequest = () => { throw Error("Network disabled in build check"); };
+const ObsidianStub = new Proxy({
+  Plugin: Stub, Modal: Stub, PluginSettingTab: Stub, Events: Stub,
+  Platform: { isDesktopApp: true, isAndroidApp: false, isMobileApp: false },
+  requireApiVersion: () => true,
+  request: blockedRequest, requestUrl: blockedRequest,
+  moment: Object.assign(() => {}, { locale: () => "en" }),
+}, { get: (target, key) => target[key] ?? Stub });
+window.smokeResult = null;
+</script>
+<script src="/probe.js"></script>
+<script>
+(async () => {
+  let timer;
+  try {
+    const code = await (await fetch("/plugin.js")).text();
+    const mod = { exports: {} };
+    new Function("require", "module", "exports", code)((id) => {
+      if (id === "obsidian") return ObsidianStub;
+      throw Error(`Unexpected runtime dependency: ${id}`);
+    }, mod, mod.exports);
+    const plugin = mod.exports.default || mod.exports;
+    const checks = await Promise.race([
+      ViteSmoke.run(await (await fetch("/vectors.json")).json()),
+      new Promise((_, reject) => { timer = setTimeout(() => reject(Error("Worker check timed out")), 20000); }),
+    ]);
+    window.smokeResult = {
+      pluginExport: typeof plugin === "function",
+      pluginLoadMethod: typeof plugin.prototype.onload === "function",
+      ...checks,
+    };
+  } catch (error) {
+    window.smokeResult = { error: error.stack || error.message };
+  } finally {
+    clearTimeout(timer);
+  }
+  document.getElementById("result").textContent = JSON.stringify(window.smokeResult, null, 2);
+})();
+</script>

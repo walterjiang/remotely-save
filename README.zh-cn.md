@@ -200,6 +200,51 @@ PRO（付费）功能“智能冲突”为用户提供了另一个选项：合�
 
 详见[PRO](./docs/pro/README.md)了解更多详情。
 
+## 本地开发
+
+本分支使用 Vite 构建。环境要求：Node.js 22.12+，以及
+pnpm 12.4.2。运行测试前安装 Git LFS 并执行 `git lfs pull`，下载二进制测试样本。
+
+```sh
+pnpm install --frozen-lockfile
+pnpm build       # 类型检查和生产构建
+pnpm dev         # 监听构建，附带内联源码映射，不启动开发服务器
+pnpm typecheck   # 增量 TypeScript 检查
+pnpm test        # Mocha 单元测试
+pnpm test:build  # 生产构建和浏览器冒烟检查
+pnpm analyze     # 内存构建并输出依赖体积报告
+pnpm audit --prod # 检查运行时依赖的已知漏洞
+```
+
+浏览器检查默认使用本机 Google Chrome。也可以先执行
+`pnpm exec playwright-core install chromium`，再运行
+`PLAYWRIGHT_CHANNEL=chromium pnpm test:build`。检查使用可丢弃数据验证插件导出、
+PKCE 和加密 Worker，并与原版 Node 库比对 S3 CRC64 及加密文件，不连接账户；
+桌面及移动端 Obsidian 仍需单独验证。
+
+Worker 检查还覆盖输入缓冲区复用、关闭时取消等待、异常退出及损坏密文后的错误恢复。
+
+MSAL 7 使用浏览器加密适配层提供哈希、安全随机数与 UUID。构建检查将项目的
+MSAL 调用限制在 PKCE 和授权 URL 生成；新增令牌或证书接口前需检查适配层。
+浏览器检查覆盖两种 OneDrive 授权 URL 和 pCloud 接口封装。pnpm overrides 移除
+pCloud 的发布工具，保留编译后的 SDK 与 Babel 运行时；`basic-ftp` 版本覆盖则通过
+`get-uri` 配合本地 FTP 样本验证下载、缓存命中和文件不存在的响应。
+
+运行环境需要原生 BigInt、WebCrypto 和 Web Worker（iOS/iPadOS 14+，或较新的
+Android System WebView / 桌面 Obsidian）。构建时会无精度损失地转换 SDK 的 BigInt
+字面量语法，但不提供 BigInt 运行时模拟。不支持原生 BigInt 时会明确提示升级环境。
+主包及内联 Worker 的输出都会检查 ES2016 语法，防止新语法混入产物。
+
+Box 集成按需组合官方文件和文件夹模块。若新增调用超出该范围，构建会报错，
+要求先扩展适配层；浏览器检查会与完整官方客户端比对请求、响应和错误。
+`test:build` 同时限制未压缩的 `main.js` 不超过 3.8 MB，体积回退时先用
+`pnpm analyze` 定位原因。
+
+构建产物为 `dist/main.js`、`dist/manifest.json` 和 `dist/styles.css`。
+手工测试时，将这三个文件复制到可丢弃知识库的
+`.obsidian/plugins/remotely-save/` 目录。`pnpm clean` 清理 `dist/` 和类型检查缓存。
+OAuth 应用配置可参照 `.env.example.txt` 填入本地 `.env`，不要提交凭据。
+
 ## 如何调试（debug）
 
 如发生错误，查看[这里文档](./docs/how_to_debug/README.md)了解调试方式。

@@ -34,7 +34,7 @@
   "protocol_dropbox_no_modal": "You are not starting Dropbox connection from the settings page. Abort.",
   "protocol_onedrive_connecting": "Connecting to OneDrive...\nPlease DO NOT close this modal.",
   "protocol_onedrive_connect_succ_revoke": "You've connected as user {{username}}. If you want to disconnect, click this button.",
-  "protocol_onedrive_connect_fail": "Something went wrong from response from OneDrive. Maybe you rejected the auth?",
+  "protocol_onedrive_connect_fail": "Could not finish connecting to OneDrive. Check the error below and authorize again.",
   "protocol_onedrive_connect_unknown": "Do not know how to deal with the callback: {{params}}",
   "command_startsync": "start sync",
   "command_drynrun": "start sync (dry run only)",

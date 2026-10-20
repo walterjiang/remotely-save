@@ -7,7 +7,7 @@
 1. [知识库根规则](../my_obsidan/AGENTS.md) 与 [知识索引](../my_obsidan/知识索引.md)。
 2. [个人项目维护规则](../my_obsidan/个人项目/AGENTS.md)。
 3. [本项目开发规范](../my_obsidan/个人项目/Remotely%20Save/AGENTS.md)。
-4. [项目概览](../my_obsidan/个人项目/Remotely%20Save/概览.md) 与 [项目地图](../my_obsidan/个人项目/Remotely%20Save/项目地图.md)。
+4. [项目概览](../my_obsidan/个人项目/Remotely%20Save/概览.md) 与 [项目地图](../my_obsidan/个人项目/Remotely%20Save/Remotely%20Save项目地图.md)。
 5. 根据任务读取相关源码、上游文档及目标目录更近的规则。
 
 使用方法与跨工具提示词见 [开发规范使用说明](../my_obsidan/个人项目/Remotely%20Save/开发规范使用说明.md)。
