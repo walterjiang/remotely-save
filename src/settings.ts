@@ -397,6 +397,11 @@ class DropboxAuthModal extends Modal {
       return this.plugin.i18n.t(x, vars);
     };
 
+    if (this.plugin.settings.dropbox.clientID === "") {
+      contentEl.createEl("p", { text: t("modal_dropboxauth_missing_config") });
+      return;
+    }
+
     let needManualPatse = false;
     const userAgent = window.navigator.userAgent.toLocaleLowerCase() || "";
     // some users report that,
@@ -556,15 +561,23 @@ export class OnedriveAuthModal extends Modal {
   async onOpen() {
     const { contentEl } = this;
 
+    const t = (x: TransItemType, vars?: any) => {
+      return this.plugin.i18n.t(x, vars);
+    };
+
+    if (
+      this.plugin.settings.onedrive.clientID === "" ||
+      this.plugin.settings.onedrive.authority === ""
+    ) {
+      contentEl.createEl("p", { text: t("modal_onedriveauth_missing_config") });
+      return;
+    }
+
     const { authUrl, verifier } = await getAuthUrlAndVerifierOnedrive(
       this.plugin.settings.onedrive.clientID,
       this.plugin.settings.onedrive.authority
     );
     this.plugin.oauth2Info.verifier = verifier;
-
-    const t = (x: TransItemType, vars?: any) => {
-      return this.plugin.i18n.t(x, vars);
-    };
 
     t("modal_onedriveauth_shortdesc")
       .split("\n")
