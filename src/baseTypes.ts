@@ -19,11 +19,13 @@ declare global {
   var DEFAULT_DROPBOX_APP_KEY: string;
   var DEFAULT_ONEDRIVE_CLIENT_ID: string;
   var DEFAULT_ONEDRIVE_AUTHORITY: string;
+  var DEFAULT_ONEDRIVE_APP_FOLDER_NAME: string;
 }
 
 export const DROPBOX_APP_KEY = global.DEFAULT_DROPBOX_APP_KEY;
 export const ONEDRIVE_CLIENT_ID = global.DEFAULT_ONEDRIVE_CLIENT_ID;
 export const ONEDRIVE_AUTHORITY = global.DEFAULT_ONEDRIVE_AUTHORITY;
+export const ONEDRIVE_APP_FOLDER_NAME = global.DEFAULT_ONEDRIVE_APP_FOLDER_NAME;
 
 export const DEFAULT_CONTENT_TYPE = "application/octet-stream";
 

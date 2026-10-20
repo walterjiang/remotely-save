@@ -255,3 +255,70 @@ describe("OneDrive authentication regressions", () => {
     assert.equal(plugin.oauth2Info.verifier, "");
   });
 });
+
+describe("OneDrive drive item path parsing", () => {
+  function loadApi(appFolderName?: string) {
+    return loadSource("src/fsOnedrive.ts", {
+      obsidian: {
+        request: async () => {
+          throw Error("Unexpected request");
+        },
+        requestUrl: async () => {
+          throw Error("Unexpected requestUrl");
+        },
+      },
+      "./baseTypes": {
+        OAUTH2_FORCE_EXPIRE_MILLISECONDS: 80 * 86400000,
+        ONEDRIVE_APP_FOLDER_NAME: appFolderName,
+      },
+      "./baseTypesObs": { VALID_REQURL: true },
+      "./fsAll": { FakeFs: class {} },
+    });
+  }
+
+  function item(path: string, name: string, folder = false): any {
+    return {
+      parentReference: { path },
+      name,
+      ...(folder ? { folder: {} } : {}),
+      fileSystemInfo: { lastModifiedDateTime: "2026-01-01T00:00:00Z" },
+    };
+  }
+
+  it("parses the configured app folder name with localized Apps dir", () => {
+    const api = loadApi("obsidan_save");
+    const entity = api.fromDriveItemToEntity(
+      item("/drive/root:/应用/obsidan_save/my_obsidan/sub", "note.md"),
+      "my_obsidan"
+    );
+    assert.equal(entity.key, "sub/note.md");
+  });
+
+  it("falls back to the official folder name when not configured", () => {
+    const api = loadApi();
+    const entity = api.fromDriveItemToEntity(
+      item("/drive/root:/Apps/remotely-save/my_obsidan", "note.md"),
+      "my_obsidan"
+    );
+    assert.equal(entity.key, "note.md");
+  });
+
+  it("rejects paths outside the configured app folder", () => {
+    const api = loadApi("obsidan_save");
+    assert.throws(() =>
+      api.fromDriveItemToEntity(
+        item("/drive/root:/应用/remotely-save/my_obsidan", "note.md"),
+        "my_obsidan"
+      )
+    );
+  });
+
+  it("keeps the trailing slash for folders", () => {
+    const api = loadApi("obsidan_save");
+    const entity = api.fromDriveItemToEntity(
+      item("/drive/root:/应用/obsidan_save/my_obsidan", "sub", true),
+      "my_obsidan"
+    );
+    assert.equal(entity.key, "sub/");
+  });
+});
